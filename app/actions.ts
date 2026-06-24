@@ -20,38 +20,63 @@ const LoginSchema = z.object({
   password: z.string().min(1)
 });
 
+function authDatabaseError() {
+  return {
+    error:
+      "Database is not ready yet. Please check Neon DATABASE_URL and run Prisma db push + seed."
+  };
+}
+
 export async function registerAction(_: unknown, formData: FormData) {
   const parsed = RegisterSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: "Please enter a valid name, email, and password." };
 
-  const existing = await prisma.user.findUnique({ where: { email: parsed.data.email.toLowerCase() } });
-  if (existing) return { error: "This email is already registered." };
+  try {
+    const email = parsed.data.email.toLowerCase();
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) return { error: "This email is already registered." };
 
-  const user = await prisma.user.create({
-    data: {
-      name: parsed.data.name,
-      email: parsed.data.email.toLowerCase(),
-      passwordHash: await bcrypt.hash(parsed.data.password, 12)
-    }
-  });
+    const user = await prisma.user.create({
+      data: {
+        name: parsed.data.name,
+        email,
+        passwordHash: await bcrypt.hash(parsed.data.password, 12)
+      }
+    });
 
-  await createMissingStarterHabits(user.id);
-  await setSession(user.id);
-  redirect("/");
+    await createMissingStarterHabits(user.id);
+    await setSession(user.id);
+    redirect("/");
+  } catch (error) {
+    console.error("Register failed", error);
+    return authDatabaseError();
+  }
 }
 
 export async function loginAction(_: unknown, formData: FormData) {
   const parsed = LoginSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: "Please enter your email and password." };
 
-  const user = await prisma.user.findUnique({ where: { email: parsed.data.email.toLowerCase() } });
-  if (!user || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
-    return { error: "Invalid email or password." };
-  }
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: parsed.data.email.toLowerCase() }
+    });
 
-  await createMissingStarterHabits(user.id);
-  await setSession(user.id);
-  redirect("/");
+    if (!user) {
+      return { error: "No account found for this email. Please register first." };
+    }
+
+    if (!(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
+      return { error: "Wrong password. Please try again." };
+    }
+
+    await createMissingStarterHabits(user.id);
+    await setSession(user.id);
+    redirect("/");
+  } catch (error) {
+    console.error("Login failed", error);
+    return authDatabaseError();
+  }
 }
 
 export async function logoutAction() {
