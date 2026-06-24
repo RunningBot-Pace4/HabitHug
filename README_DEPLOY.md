@@ -104,3 +104,20 @@ Open the production URL, register a new user, and the app will create starter ha
 - Battle rooms with private join code
 - Neon PostgreSQL + Prisma
 - Vercel-ready pnpm install configuration
+
+
+## Current Vercel install setting
+
+Use Yarn Classic, not npm/corepack/pnpm:
+
+```bash
+yarn install --network-timeout 100000 --ignore-engines
+```
+
+Build command:
+
+```bash
+yarn build
+```
+
+Remove `ENABLE_EXPERIMENTAL_COREPACK` if you added it earlier.

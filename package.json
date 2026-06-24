@@ -35,9 +35,8 @@
     "typescript": "^5.9.3"
   },
   "engines": {
-    "node": "22.x"
+    "node": ">=20.9.0"
   },
-  "packageManager": "pnpm@10.24.0",
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   }
