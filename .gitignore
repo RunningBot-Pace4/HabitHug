@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# env / secrets
+.env
+.env*.local
+
+# Vercel
+.vercel/
+
+# logs / cache
+*.log
+.pnpm-store/
+coverage/
+dist/
+tsconfig.tsbuildinfo
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Visual Studio local cache - never commit/copy
+.vs/
+*.suo
+*.user
