@@ -3066,3 +3066,171 @@ input:focus,select:focus{
     grid-template-columns: 1fr;
   }
 }
+
+/* Patch: mobile-friendly Settings page */
+.settings-page-mobile-safe,
+.settings-profile-card,
+.settings-hero {
+  max-width: 100%;
+}
+
+.settings-profile-card,
+.settings-hero {
+  overflow-wrap: anywhere;
+}
+
+.settings-field input {
+  min-width: 0;
+  font-size: 16px;
+}
+
+.dashboard-color-choice strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+
+@media (max-width: 760px) {
+  .settings-hero {
+    padding: 20px 18px;
+    border-radius: 28px;
+    text-align: center;
+  }
+
+  .settings-hero-copy {
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .settings-hero-icon,
+  .settings-mascot-preview {
+    width: 66px;
+    height: 66px;
+    border-radius: 24px;
+    font-size: 32px;
+  }
+
+  .settings-hero h1 {
+    font-size: clamp(30px, 11vw, 42px);
+    line-height: .95;
+  }
+
+  .settings-hero p:not(.eyebrow) {
+    margin: 8px auto 0;
+    max-width: 28ch;
+    line-height: 1.45;
+  }
+
+  .admin-badge {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 14px;
+  }
+
+  .settings-profile-card {
+    padding: 18px;
+    border-radius: 28px;
+    gap: 16px;
+  }
+
+  .settings-card-head {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .settings-profile-card h2 {
+    font-size: clamp(24px, 8vw, 34px);
+    line-height: 1;
+  }
+
+  .settings-profile-card p {
+    margin-top: 8px;
+    line-height: 1.45;
+  }
+
+  .settings-field {
+    gap: 7px;
+  }
+
+  .settings-field input,
+  .settings-profile-card input[type="text"],
+  .settings-profile-card input:not([type]) {
+    min-height: 54px;
+    border-radius: 18px;
+    padding: 14px 14px;
+  }
+
+  .settings-field small {
+    line-height: 1.35;
+  }
+
+  .mascot-picker {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .mascot-choice span {
+    height: 54px;
+    border-radius: 18px;
+    font-size: 26px;
+  }
+
+  .dashboard-color-picker {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .dashboard-color-choice {
+    min-height: 56px;
+    padding: 13px 14px;
+    border-radius: 18px;
+  }
+
+  .dashboard-color-choice span {
+    width: 24px;
+    height: 24px;
+  }
+
+  .settings-save-btn {
+    min-height: 56px;
+    border-radius: 20px;
+    margin-top: 2px;
+  }
+
+  .admin-note,
+  .form-success,
+  .form-error {
+    text-align: center;
+    line-height: 1.4;
+  }
+}
+
+@media (max-width: 380px) {
+  .app-shell {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .settings-profile-card,
+  .settings-hero {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .mascot-picker {
+    grid-template-columns: repeat(4, minmax(44px, 1fr));
+  }
+
+  .mascot-choice span {
+    height: 50px;
+    font-size: 24px;
+  }
+
+  .dashboard-color-choice {
+    font-size: 12.5px;
+  }
+}
+

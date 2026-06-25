@@ -8,7 +8,7 @@ export default async function SettingsPage() {
   if (!user) redirect("/login");
 
   return (
-    <main className={`app-shell dashboard-color-${user.themeColor}`}>
+    <main className={`app-shell settings-page-mobile-safe dashboard-color-${user.themeColor}`}>
       <section className="settings-hero glass-card">
         <div className="settings-hero-copy">
           <span className="settings-hero-icon">{user.mascot}</span>
