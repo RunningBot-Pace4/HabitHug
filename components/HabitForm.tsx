@@ -18,7 +18,19 @@ type HabitValue = {
 export function HabitForm({ habit }: { habit?: HabitValue }) {
   const [state, formAction, pending] = useActionState(saveHabitAction, null);
 
-  return (
+return (
+  <>
+    {pending ? (
+      <div className="form-loading-overlay" role="status" aria-live="polite" aria-label="Saving your habit">
+        <div className="form-loading-card">
+          <div className="loading-logo">🌱</div>
+          <div className="loading-spinner" aria-hidden="true" />
+          <h2>Saving your habit...</h2>
+          <p>Updating your cute habit card ✨</p>
+        </div>
+      </div>
+    ) : null}
+
     <form action={formAction} className="editor-card">
       {state && typeof state === "object" && "error" in state && (
         <div className="form-error">{String(state.error)}</div>
@@ -69,9 +81,11 @@ export function HabitForm({ habit }: { habit?: HabitValue }) {
         </div>
       </div>
 
-      <button className="primary-btn" disabled={pending}>
+      <button className="primary-btn loading-btn" disabled={pending}>
+        {pending ? <span className="btn-spinner" aria-hidden="true" /> : null}
         {pending ? "Saving..." : "Save habit"}
       </button>
     </form>
+    </>
   );
 }

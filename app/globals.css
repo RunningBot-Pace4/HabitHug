@@ -253,6 +253,13 @@ button, input, select {
   font-weight: 1000;
 }
 
+
+.sync-pill {
+  color: #7b61ff !important;
+  background: rgba(169, 119, 255, .12) !important;
+  box-shadow: inset 0 0 0 1px rgba(169, 119, 255, .16);
+}
+
 .bottom-nav {
   position: fixed;
   left: 50%;
@@ -699,4 +706,35 @@ input:focus, select:focus {
     min-height: 66px;
     font-size: 1rem;
   }
+}
+
+/* Patch: global action loading overlay */
+.global-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255, 108, 175, .22), transparent 34%),
+    radial-gradient(circle at 82% 12%, rgba(169, 119, 255, .22), transparent 36%),
+    rgba(255, 247, 251, .72);
+  backdrop-filter: blur(18px);
+}
+
+.global-loading-card {
+  animation: loadingPop .18s ease-out;
+}
+
+@keyframes loadingPop {
+  from { transform: translateY(8px) scale(.98); opacity: .2; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.primary-btn:disabled,
+.secondary-btn:disabled,
+.icon-btn:disabled {
+  opacity: .75;
+  cursor: wait;
 }

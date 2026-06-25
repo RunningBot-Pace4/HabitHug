@@ -8,6 +8,7 @@ import { addDays, compactGridDates, parseDateOnly, todayUtc, toDateOnlyString } 
 import { bestStreak, completedDateSet, currentStreak } from "@/lib/stats";
 import { HabitFeed } from "@/components/HabitFeed";
 import { BottomNav } from "@/components/BottomNav";
+import { LoadingSubmitButton } from "@/components/LoadingSubmitButton";
 
 export default async function HomePage() {
   const user = await getCurrentUser();
@@ -66,7 +67,7 @@ export default async function HomePage() {
         </div>
         <div className="header-actions">
           <Link className="icon-btn" href="/habits/new">＋</Link>
-          <form action={logoutAction}><button className="icon-btn">↪</button></form>
+          <form action={logoutAction}><LoadingSubmitButton className="icon-btn" pendingText="…" message="Logging you out..." helper="Closing your cozy session safely 💛">↪</LoadingSubmitButton></form>
         </div>
       </header>
 

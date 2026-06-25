@@ -24,17 +24,28 @@ type HabitCardData = {
   days: GridDay[];
 };
 
+const CHECKIN_LOCK_MESSAGE =
+  "Check-ins are only open for today and yesterday 🌱 Older days are locked to keep progress fair.";
+
 export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
   const [items, setItems] = useState(habits);
-  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [slowSyncKey, setSlowSyncKey] = useState<string | null>(null);
 
   async function toggle(habitId: string, logDate: string) {
     const target = items.find((h) => h.id === habitId);
     const day = target?.days.find((d) => d.date === logDate);
-    if (!target || !day || day.locked || savingKey) return;
-
     const key = `${habitId}:${logDate}`;
-    setSavingKey(key);
+
+    if (!target || !day || day.locked || pendingKey === key) return;
+
+    setPendingKey(key);
+
+    // Check-ins are optimistic: update the UI immediately and only show
+    // a tiny background-sync note if Neon is slow. No full-page loader.
+    const slowTimer = window.setTimeout(() => {
+      setSlowSyncKey(key);
+    }, 1200);
 
     setItems((prev) =>
       prev.map((h) =>
@@ -58,13 +69,15 @@ export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
 
       if (!res.ok) {
         setItems(habits);
-        alert("Check-ins are only open for today and yesterday 🌱 Older days are locked to keep progress fair.");
+        alert(CHECKIN_LOCK_MESSAGE);
       }
     } catch {
       setItems(habits);
       alert("Oops, I couldn’t save that check-in. Please try again in a moment 💛");
     } finally {
-      setSavingKey(null);
+      window.clearTimeout(slowTimer);
+      setPendingKey((current) => (current === key ? null : current));
+      setSlowSyncKey((current) => (current === key ? null : current));
     }
   }
 
@@ -78,79 +91,86 @@ export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
           <h2>{completedToday}/{items.length} done</h2>
         </div>
         <div className="quick-chips">
-          {items.map((habit) => (
-            <button
-              key={habit.id}
-              className={`quick-chip ${habit.todayCompleted ? "done" : ""}`}
-              disabled={savingKey !== null}
-              onClick={() => {
-                const today = habit.days.find((d) => d.today);
-                if (today) toggle(habit.id, today.date);
-              }}
-            >
-              <span>{habit.icon}</span>
-              {habit.name}
-            </button>
-          ))}
+          {items.map((habit) => {
+            const today = habit.days.find((d) => d.today);
+            const todayKey = today ? `${habit.id}:${today.date}` : "";
+            return (
+              <button
+                key={habit.id}
+                className={`quick-chip ${habit.todayCompleted ? "done" : ""}`}
+                disabled={!today || pendingKey === todayKey}
+                onClick={() => {
+                  if (today) toggle(habit.id, today.date);
+                }}
+              >
+                <span>{habit.icon}</span>
+                {habit.name}
+              </button>
+            );
+          })}
         </div>
       </section>
 
       <section className="habit-feed">
-        {items.map((habit) => (
-          <article key={habit.id} className={`habit-card color-${habit.color}`}>
-            <div className="habit-card-head">
-              <div className="habit-icon">{habit.icon}</div>
-              <a className="habit-title-link" href={`/habits/${habit.id}`}>
-                <h3>{habit.name}</h3>
-                <p>{habit.description}</p>
-              </a>
-              <button
-                className={[
-                  "check-btn",
-                  habit.todayCompleted ? "done" : "",
-                  savingKey === `${habit.id}:${habit.days.find((d) => d.today)?.date}` ? "saving" : ""
-                ].join(" ")}
-                aria-label={`Toggle today for ${habit.name}`}
-                disabled={savingKey !== null}
-                onClick={() => {
-                  const today = habit.days.find((d) => d.today);
-                  if (today) toggle(habit.id, today.date);
-                }}
-              >
-                {savingKey === `${habit.id}:${habit.days.find((d) => d.today)?.date}` ? "…" : "✓"}
-              </button>
-            </div>
+        {items.map((habit) => {
+          const today = habit.days.find((d) => d.today);
+          const todayKey = today ? `${habit.id}:${today.date}` : "";
+          const habitIsSyncing = slowSyncKey?.startsWith(`${habit.id}:`);
 
-            <div className="mini-grid" aria-label={`${habit.name} progress grid`}>
-              {habit.days.map((day) => (
+          return (
+            <article key={habit.id} className={`habit-card color-${habit.color}`}>
+              <div className="habit-card-head">
+                <div className="habit-icon">{habit.icon}</div>
+                <a className="habit-title-link" href={`/habits/${habit.id}`}>
+                  <h3>{habit.name}</h3>
+                  <p>{habit.description}</p>
+                </a>
                 <button
-                  key={day.date}
-                  type="button"
-                  className={[
-                    "mini-cell",
-                    day.completed ? "completed" : "",
-                    day.today ? "today" : "",
-                    day.future ? "future" : "",
-                    day.locked ? "locked" : "",
-                    savingKey === `${habit.id}:${day.date}` ? "saving" : ""
-                  ].join(" ")}
-                  disabled={day.locked || savingKey !== null}
-                  title={day.locked ? "Check-ins are only open for today and yesterday 🌱 Older days are locked to keep progress fair." : day.date}
-                  onClick={() => toggle(habit.id, day.date)}
+                  className={["check-btn", habit.todayCompleted ? "done" : ""].join(" ")}
+                  aria-label={`Toggle today for ${habit.name}`}
+                  disabled={!today || pendingKey === todayKey}
+                  onClick={() => {
+                    if (today) toggle(habit.id, today.date);
+                  }}
                 >
-                  <span className="sr-only">{day.date}</span>
+                  ✓
                 </button>
-              ))}
-            </div>
+              </div>
 
-            <div className="card-footer">
-              <span>🔥 {habit.currentStreak} streak</span>
-              <span>🏆 {habit.bestStreak} best</span>
-              <span>✅ {habit.totalCompletions} done</span>
-              <a href={`/habits/${habit.id}/edit`}>Edit</a>
-            </div>
-          </article>
-        ))}
+              <div className="mini-grid" aria-label={`${habit.name} progress grid`}>
+                {habit.days.map((day) => {
+                  const dayKey = `${habit.id}:${day.date}`;
+                  return (
+                    <button
+                      key={day.date}
+                      type="button"
+                      className={[
+                        "mini-cell",
+                        day.completed ? "completed" : "",
+                        day.today ? "today" : "",
+                        day.future ? "future" : "",
+                        day.locked ? "locked" : ""
+                      ].join(" ")}
+                      disabled={day.locked || pendingKey === dayKey}
+                      title={day.locked ? CHECKIN_LOCK_MESSAGE : day.date}
+                      onClick={() => toggle(habit.id, day.date)}
+                    >
+                      <span className="sr-only">{day.date}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="card-footer">
+                <span>🔥 {habit.currentStreak} streak</span>
+                <span>🏆 {habit.bestStreak} best</span>
+                <span>✅ {habit.totalCompletions} done</span>
+                {habitIsSyncing ? <span className="sync-pill">Saving quietly…</span> : null}
+                <a href={`/habits/${habit.id}/edit`}>Edit</a>
+              </div>
+            </article>
+          );
+        })}
       </section>
     </>
   );

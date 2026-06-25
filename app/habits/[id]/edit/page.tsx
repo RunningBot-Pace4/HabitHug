@@ -4,6 +4,7 @@ import { archiveHabitAction } from "@/app/actions";
 import { HabitForm } from "@/components/HabitForm";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
+import { LoadingSubmitButton } from "@/components/LoadingSubmitButton";
 
 export default async function EditHabitPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -22,7 +23,7 @@ export default async function EditHabitPage({ params }: { params: Promise<{ id: 
       <HabitForm habit={habit} />
       <form action={archiveHabitAction} style={{ marginTop: 16 }}>
         <input type="hidden" name="id" value={habit.id} />
-        <button className="secondary-btn" style={{ width: "100%" }}>Archive habit</button>
+        <LoadingSubmitButton className="secondary-btn loading-btn" style={{ width: "100%" }} pendingText="Archiving..." message="Archiving habit..." helper="Keeping your history safe while hiding this habit 🗂️">Archive habit</LoadingSubmitButton>
       </form>
     </main>
   );

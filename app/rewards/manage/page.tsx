@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { saveRewardDirectAction, deleteRewardAction } from "@/app/actions";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
+import { LoadingSubmitButton } from "@/components/LoadingSubmitButton";
 
 export default async function ManageRewardsPage() {
   const user = await getCurrentUser();
@@ -29,7 +30,7 @@ export default async function ManageRewardsPage() {
           <input name="ruleValue" type="number" placeholder="Rule value" defaultValue={1} />
           <input name="sortOrder" type="number" placeholder="Sort order" defaultValue={100} />
           <label style={{ display: "flex", gap: 8, alignItems: "center" }}><input style={{ width: "auto" }} type="checkbox" name="isActive" defaultChecked /> Active</label>
-          <button className="primary-btn">Add reward</button>
+          <LoadingSubmitButton pendingText="Adding reward..." message="Adding reward..." helper="Saving this badge into Neon Postgres ⭐">Add reward</LoadingSubmitButton>
         </form>
 
         <div className="room-list">
@@ -39,7 +40,7 @@ export default async function ManageRewardsPage() {
               <p>{reward.description}</p>
               <form action={deleteRewardAction}>
                 <input type="hidden" name="id" value={reward.id} />
-                <button className="secondary-btn">Delete</button>
+                <LoadingSubmitButton className="secondary-btn loading-btn" pendingText="Deleting..." message="Deleting reward..." helper="Removing this badge definition safely 🧹">Delete</LoadingSubmitButton>
               </form>
             </article>
           ))}

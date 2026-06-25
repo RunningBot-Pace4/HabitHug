@@ -6,7 +6,19 @@ import { createBattleAction, joinBattleAction } from "@/app/actions";
 export function CreateBattleForm({ start, end }: { start: string; end: string }) {
   const [state, formAction, pending] = useActionState(createBattleAction, null);
 
-  return (
+return (
+  <>
+    {pending ? (
+      <div className="form-loading-overlay" role="status" aria-live="polite" aria-label="Creating battle">
+        <div className="form-loading-card">
+          <div className="loading-logo">🏆</div>
+          <div className="loading-spinner" aria-hidden="true" />
+          <h2>Creating your battle room...</h2>
+          <p>Preparing the leaderboard and invite code ✨</p>
+        </div>
+      </div>
+    ) : null}
+
     <form action={formAction} className="battle-form" aria-busy={pending}>
       {state && typeof state === "object" && "error" in state && <div className="form-error">{String(state.error)}</div>}
 
@@ -46,13 +58,26 @@ export function CreateBattleForm({ start, end }: { start: string; end: string })
         {pending ? "Creating battle..." : "Create battle"}
       </button>
     </form>
+    </>
   );
 }
 
 export function JoinBattleForm() {
   const [state, formAction, pending] = useActionState(joinBattleAction, null);
 
-  return (
+return (
+  <>
+    {pending ? (
+      <div className="form-loading-overlay" role="status" aria-live="polite" aria-label="Joining battle">
+        <div className="form-loading-card">
+          <div className="loading-logo">🔐</div>
+          <div className="loading-spinner" aria-hidden="true" />
+          <h2>Joining battle...</h2>
+          <p>Checking your private invite code 🏆</p>
+        </div>
+      </div>
+    ) : null}
+
     <form action={formAction} className="join-form" aria-busy={pending}>
       {state && typeof state === "object" && "error" in state && <div className="form-error">{String(state.error)}</div>}
       <label>
@@ -64,5 +89,6 @@ export function JoinBattleForm() {
         {pending ? "Joining battle..." : "Join battle"}
       </button>
     </form>
+    </>
   );
 }
