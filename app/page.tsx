@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
 import { createMissingStarterHabits } from "@/lib/bootstrap";
 import { addDays, compactGridDates, todayUtc, toDateOnlyString } from "@/lib/dates";
-import { bestStreak, completedDateSet, currentStreak } from "@/lib/stats";
+import { bestStreak, completedDateSet, currentStreak, totalPoints } from "@/lib/stats";
 import { HabitFeed } from "@/components/HabitFeed";
 import { BottomNav } from "@/components/BottomNav";
 import { LoadingSubmitButton } from "@/components/LoadingSubmitButton";
@@ -16,7 +16,7 @@ export default async function HomePage() {
 
   await createMissingStarterHabits(user.id);
 
-  const gridDates = compactGridDates(126);
+  const gridDates = compactGridDates(156);
   const today = todayUtc();
   const todayText = toDateOnlyString(today);
   const yesterdayText = toDateOnlyString(addDays(today, -1));
@@ -29,8 +29,28 @@ export default async function HomePage() {
     }
   });
 
+  const badges = await prisma.userRewardBadge.findMany({
+    where: { userId: user.id },
+    include: { badge: true }
+  });
+
+  const accountCompletedDates = new Set<string>();
+  for (const habit of habits) {
+    for (const log of habit.logs) {
+      if (log.isCompleted) {
+        accountCompletedDates.add(toDateOnlyString(log.logDate));
+      }
+    }
+  }
+
   const cards = habits.map((habit: any) => {
     const set = completedDateSet(habit.logs);
+    const completedDates = [...set].sort();
+    const monthCompleted = completedDates.filter((date) => date.slice(0, 7) === todayText.slice(0, 7)).length;
+    const weeklyDone = completedDates.filter((date) => date >= toDateOnlyString(addDays(today, -6)) && date <= todayText).length;
+    const yearCompletions = completedDates.filter((date) => date.slice(0, 4) === todayText.slice(0, 4)).length;
+    const monthPercent = today.getUTCDate() === 0 ? 0 : Math.round((monthCompleted * 100) / today.getUTCDate());
+
     return {
       id: habit.id,
       name: habit.name,
@@ -40,8 +60,12 @@ export default async function HomePage() {
       targetPerWeek: habit.targetPerWeek,
       currentStreak: currentStreak(set),
       bestStreak: bestStreak(set),
-      totalCompletions: habit.logs.filter((log: any) => log.isCompleted).length,
+      totalCompletions: set.size,
+      weeklyDone,
+      yearCompletions,
+      monthPercent,
       todayCompleted: set.has(todayText),
+      completedDates,
       days: gridDates.map((date) => ({
         date,
         completed: set.has(date),
@@ -53,23 +77,49 @@ export default async function HomePage() {
   });
 
   return (
-    <main className="app-shell">
-      <header className="app-header">
-        <div className="brand">
-          <div className="brand-bubble">{user.mascot}</div>
-          <div>
-            <h1>HabitHug</h1>
-            <p>Hi {user.name}, tiny wins today ✨</p>
-          </div>
-        </div>
-        <div className="header-actions">
-          <Link className="icon-btn" href="/habits/new">＋</Link>
-          <form action={logoutAction}><LoadingSubmitButton className="icon-btn" pendingText="…" message="Logging you out..." helper="Closing your cozy session safely 💛">↪</LoadingSubmitButton></form>
+    <>
+      <header className="top-app-bar">
+        <Link className="compact-brand" href="/">
+          <span className="logo-grid" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /><i /></span>
+          <span>HabitHug</span>
+        </Link>
+
+        <nav className="top-nav-links" aria-label="Main navigation">
+          <Link href="/">Habits</Link>
+          <Link href="/battle">Battle</Link>
+          <Link href="/rewards">Rewards</Link>
+          <Link href="/settings">Settings</Link>
+        </nav>
+
+        <div className="account-pill">
+          <span className="account-avatar">{user.mascot}</span>
+          <span className="account-name">{user.name}</span>
+          <form action={logoutAction}>
+            <LoadingSubmitButton className="account-logout-btn" pendingText="…" message="Logging you out..." helper="Closing your cozy session safely 💛">
+              Log out
+            </LoadingSubmitButton>
+          </form>
         </div>
       </header>
 
-      <HabitFeed habits={cards} />
-      <BottomNav />
-    </main>
+      <main className="app-shell">
+        <section className="feed-hero">
+          <div>
+            <p className="eyebrow">Habit cards</p>
+            <h1>Hi {user.name}! {user.mascot}</h1>
+            <p>All your habits in one clean visual feed. Tap today or yesterday to keep progress fair and fresh.</p>
+          </div>
+          <Link className="add-pill" href="/habits/new">＋ Add habit</Link>
+        </section>
+
+        <HabitFeed
+          habits={cards}
+          dayStreak={currentStreak(accountCompletedDates)}
+          totalPoints={totalPoints(badges)}
+        />
+
+        <BottomNav />
+      </main>
+    </>
   );
 }

@@ -20,17 +20,23 @@ type HabitCardData = {
   currentStreak: number;
   bestStreak: number;
   totalCompletions: number;
+  weeklyDone: number;
+  yearCompletions: number;
+  monthPercent: number;
   todayCompleted: boolean;
+  completedDates: string[];
   days: GridDay[];
 };
 
 type ToggleStatsResponse = {
   completed?: boolean;
   isCompleted?: boolean;
-  currentStreak?: number;
-  bestStreak?: number;
-  totalCompletions?: number;
-  todayCompleted?: boolean;
+};
+
+type HabitFeedProps = {
+  habits: HabitCardData[];
+  dayStreak: number;
+  totalPoints: number;
 };
 
 const CHECKIN_LOCK_MESSAGE =
@@ -42,13 +48,12 @@ function addDays(dateText: string, amount: number) {
   return date.toISOString().slice(0, 10);
 }
 
-function liveStats(days: GridDay[], previousBest: number) {
-  const completedDates = new Set(days.filter((day) => day.completed).map((day) => day.date));
-  const today = days.find((day) => day.today)?.date;
+function calculateStats(completedDatesArray: string[], todayDate: string | undefined, targetPerWeek: number) {
+  const completedDates = new Set(completedDatesArray);
 
   let currentStreak = 0;
-  if (today) {
-    let cursor = today;
+  if (todayDate) {
+    let cursor = todayDate;
     while (completedDates.has(cursor)) {
       currentStreak += 1;
       cursor = addDays(cursor, -1);
@@ -56,7 +61,7 @@ function liveStats(days: GridDay[], previousBest: number) {
   }
 
   const sortedDates = [...completedDates].sort();
-  let bestVisibleStreak = 0;
+  let bestStreak = 0;
   let run = 0;
   let previousDate: string | null = null;
 
@@ -67,59 +72,85 @@ function liveStats(days: GridDay[], previousBest: number) {
       run = 1;
     }
 
-    bestVisibleStreak = Math.max(bestVisibleStreak, run);
+    bestStreak = Math.max(bestStreak, run);
     previousDate = date;
   }
 
+  const weekStart = todayDate ? addDays(todayDate, -6) : "";
+  const weeklyDone = todayDate
+    ? sortedDates.filter((date) => date >= weekStart && date <= todayDate).length
+    : 0;
+  const yearCompletions = todayDate
+    ? sortedDates.filter((date) => date.slice(0, 4) === todayDate.slice(0, 4)).length
+    : sortedDates.length;
+  const monthCompleted = todayDate
+    ? sortedDates.filter((date) => date.slice(0, 7) === todayDate.slice(0, 7)).length
+    : 0;
+  const todayDay = todayDate ? Number(todayDate.slice(8, 10)) : 1;
+  const monthPercent = Math.round((monthCompleted * 100) / Math.max(1, todayDay));
+
   return {
     currentStreak,
-    // Keep old all-time best while still allowing a new live streak to increase it instantly.
-    bestStreak: Math.max(previousBest, bestVisibleStreak),
+    bestStreak,
     totalCompletions: completedDates.size,
-    todayCompleted: today ? completedDates.has(today) : false
+    weeklyDone: Math.min(weeklyDone, Math.max(targetPerWeek, weeklyDone)),
+    yearCompletions,
+    monthPercent,
+    todayCompleted: todayDate ? completedDates.has(todayDate) : false
   };
 }
 
-function applyServerStats(
-  habit: HabitCardData,
-  logDate: string,
-  response: ToggleStatsResponse
-): HabitCardData {
-  const completed =
-    typeof response.isCompleted === "boolean"
-      ? response.isCompleted
-      : typeof response.completed === "boolean"
-        ? response.completed
-        : undefined;
+function withLocalCheckinState(habit: HabitCardData, logDate: string, completed: boolean): HabitCardData {
+  const completedSet = new Set(habit.completedDates);
 
-  const days =
-    completed === undefined
-      ? habit.days
-      : habit.days.map((day) => (day.date === logDate ? { ...day, completed } : day));
+  if (completed) {
+    completedSet.add(logDate);
+  } else {
+    completedSet.delete(logDate);
+  }
 
-  const optimistic = liveStats(days, habit.bestStreak);
+  const completedDates = [...completedSet].sort();
+  const days = habit.days.map((day) =>
+    day.date === logDate ? { ...day, completed } : day
+  );
+  const todayDate = habit.days.find((day) => day.today)?.date;
+  const stats = calculateStats(completedDates, todayDate, habit.targetPerWeek);
 
   return {
     ...habit,
-    days,
-    currentStreak:
-      typeof response.currentStreak === "number" ? response.currentStreak : optimistic.currentStreak,
-    bestStreak: typeof response.bestStreak === "number" ? response.bestStreak : optimistic.bestStreak,
-    totalCompletions:
-      typeof response.totalCompletions === "number"
-        ? response.totalCompletions
-        : optimistic.totalCompletions,
-    todayCompleted:
-      typeof response.todayCompleted === "boolean" ? response.todayCompleted : optimistic.todayCompleted
+    ...stats,
+    completedDates,
+    days
   };
 }
 
-export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
+function calculateDayStreakFromItems(items: HabitCardData[]) {
+  const completedDates = new Set<string>();
+  let todayDate: string | undefined;
+
+  for (const habit of items) {
+    todayDate = todayDate ?? habit.days.find((day) => day.today)?.date;
+    for (const date of habit.completedDates) completedDates.add(date);
+  }
+
+  if (!todayDate) return 0;
+
+  let streak = 0;
+  let cursor = todayDate;
+  while (completedDates.has(cursor)) {
+    streak += 1;
+    cursor = addDays(cursor, -1);
+  }
+
+  return streak;
+}
+
+export function HabitFeed({ habits, dayStreak, totalPoints }: HabitFeedProps) {
   const [items, setItems] = useState(habits);
 
-  // Check-ins should feel instant and stable.
-  // We update the UI immediately, then save the desired final state in the background.
-  // Requests for the same day are sent in order so an older slow response cannot tick a box back on.
+  // Check-ins are optimistic and client-owned until the next page load.
+  // The API receives the final desired state (completed=true/false), not "toggle",
+  // so late server responses cannot re-tick an item the user just unticked.
   const itemsRef = useRef(habits);
   const requestVersionRef = useRef<Record<string, number>>({});
   const desiredCompletedRef = useRef<Record<string, boolean>>({});
@@ -155,11 +186,6 @@ export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
       }
 
       const result = (await res.json()) as ToggleStatsResponse;
-
-      // If the user tapped again while this request was running, do not apply this old response.
-      // Send the newest desired state after this request finishes.
-      if (requestVersionRef.current[key] !== requestVersion) return;
-
       const serverCompleted =
         typeof result.isCompleted === "boolean"
           ? result.isCompleted
@@ -167,12 +193,11 @@ export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
             ? result.completed
             : completed;
 
-      if (serverCompleted !== completed) return;
+      if (requestVersionRef.current[key] !== requestVersion) return;
 
-      const nextItems = itemsRef.current.map((habit) =>
-        habit.id === habitId ? applyServerStats(habit, logDate, result) : habit
-      );
-      commitItems(nextItems);
+      if (serverCompleted !== completed) {
+        alert("Oops, that check-in did not sync. Please tap once more 💛");
+      }
     } catch {
       if (requestVersionRef.current[key] === requestVersion) {
         alert("Oops, I couldn’t save that check-in. Please try again in a moment 💛");
@@ -180,7 +205,6 @@ export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
     } finally {
       inFlightRef.current[key] = false;
 
-      // A newer tap happened while this request was in flight. Save the latest desired state now.
       if ((requestVersionRef.current[key] ?? 0) !== requestVersion) {
         void flushServerSet(key, habitId, logDate);
       }
@@ -198,7 +222,7 @@ export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
     pendingTimersRef.current[key] = setTimeout(() => {
       delete pendingTimersRef.current[key];
       void flushServerSet(key, habitId, logDate);
-    }, 120);
+    }, 90);
   }
 
   function toggle(habitId: string, logDate: string) {
@@ -210,107 +234,141 @@ export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
 
     const nextCompleted = !day.completed;
 
-    // Instant optimistic UI update. Stats update at the same time as the square.
-    const nextItems = itemsRef.current.map((habit) => {
-      if (habit.id !== habitId) return habit;
-
-      const nextDays = habit.days.map((d) =>
-        d.date === logDate ? { ...d, completed: nextCompleted } : d
-      );
-      const stats = liveStats(nextDays, habit.bestStreak);
-      const totalDelta = day.completed === nextCompleted ? 0 : nextCompleted ? 1 : -1;
-
-      return {
-        ...habit,
-        ...stats,
-        totalCompletions: Math.max(0, habit.totalCompletions + totalDelta),
-        days: nextDays
-      };
-    });
+    const nextItems = itemsRef.current.map((habit) =>
+      habit.id === habitId ? withLocalCheckinState(habit, logDate, nextCompleted) : habit
+    );
 
     commitItems(nextItems);
     queueServerSet(key, habitId, logDate, nextCompleted);
   }
 
   const completedToday = useMemo(() => items.filter((h) => h.todayCompleted).length, [items]);
+  const liveDayStreak = useMemo(() => calculateDayStreakFromItems(items), [items]);
+  const progressPercent = items.length === 0 ? 0 : Math.round((completedToday * 100) / items.length);
 
   return (
     <>
-      <section className="today-strip">
-        <div>
-          <p className="eyebrow">Today</p>
-          <h2>{completedToday}/{items.length} done</h2>
+      <section className="feed-summary" aria-label="Today summary">
+        <div className="summary-bubble">
+          <span>🔥</span>
+          <strong>{liveDayStreak}</strong>
+          <small>day streak</small>
         </div>
-        <div className="quick-chips">
-          {items.map((habit) => {
-            const today = habit.days.find((d) => d.today);
-            return (
-              <button
-                key={habit.id}
-                className={`quick-chip ${habit.todayCompleted ? "done" : ""}`}
-                disabled={!today}
-                onClick={() => {
-                  if (today) toggle(habit.id, today.date);
-                }}
-              >
-                <span>{habit.icon}</span>
-                {habit.name}
-              </button>
-            );
-          })}
+        <div className="summary-bubble">
+          <span>✅</span>
+          <strong>{completedToday}/{items.length}</strong>
+          <small>today</small>
+        </div>
+        <div className="summary-bubble">
+          <span>🌱</span>
+          <strong>{progressPercent}%</strong>
+          <small>today progress</small>
+        </div>
+        <div className="summary-bubble">
+          <span>⭐</span>
+          <strong>{totalPoints}</strong>
+          <small>points</small>
         </div>
       </section>
 
-      <section className="habit-feed">
+      <div className="feed-progress-track" aria-hidden="true">
+        <i style={{ width: `${progressPercent}%` }} />
+      </div>
+
+      <section className="quick-check-row" aria-label="Today quick check-in">
         {items.map((habit) => {
           const today = habit.days.find((d) => d.today);
           return (
-            <article key={habit.id} className={`habit-card color-${habit.color}`}>
-              <div className="habit-card-head">
-                <div className="habit-icon">{habit.icon}</div>
-                <a className="habit-title-link" href={`/habits/${habit.id}`}>
-                  <h3>{habit.name}</h3>
-                  <p>{habit.description}</p>
+            <button
+              key={habit.id}
+              className={`today-quick-chip ${habit.color} ${habit.todayCompleted ? "done" : "pending"}`}
+              disabled={!today}
+              onClick={() => {
+                if (today) toggle(habit.id, today.date);
+              }}
+            >
+              <span className="quick-icon">{habit.icon}</span>
+              <strong>{habit.name}</strong>
+              <em>{habit.todayCompleted ? "✓" : "＋"}</em>
+            </button>
+          );
+        })}
+      </section>
+
+      {items.length === 0 ? (
+        <section className="empty-state glass-card card-feed-empty">
+          <span>🌱</span>
+          <h2>No habits yet</h2>
+          <p>Start with one tiny routine and let the grid grow beautifully.</p>
+          <a className="add-pill" href="/habits/new">Create first habit</a>
+        </section>
+      ) : null}
+
+      <section className="habit-card-feed" aria-label="Habit visual grid feed">
+        {items.map((habit) => {
+          const today = habit.days.find((d) => d.today);
+          return (
+            <article
+              key={habit.id}
+              className={`habit-feed-card ${habit.color} ${habit.todayCompleted ? "completed" : ""}`}
+              data-habit-card
+            >
+              <header className="habit-feed-head">
+                <a className="habit-feed-title" href={`/habits/${habit.id}`}>
+                  <span className="habit-feed-icon">{habit.icon}</span>
+                  <div>
+                    <h2>{habit.name}</h2>
+                    <p>{habit.description || "Tiny habit, big hug."}</p>
+                  </div>
                 </a>
-                <button
-                  className={["check-btn", habit.todayCompleted ? "done" : ""].join(" ")}
-                  aria-label={`Toggle today for ${habit.name}`}
-                  disabled={!today}
-                  onClick={() => {
-                    if (today) toggle(habit.id, today.date);
-                  }}
-                >
-                  ✓
-                </button>
-              </div>
 
-              <div className="mini-grid" aria-label={`${habit.name} progress grid`}>
-                {habit.days.map((day) => (
+                <div className="habit-card-actions">
                   <button
-                    key={day.date}
                     type="button"
-                    className={[
-                      "mini-cell",
-                      day.completed ? "completed" : "",
-                      day.today ? "today" : "",
-                      day.future ? "future" : "",
-                      day.locked ? "locked" : ""
-                    ].join(" ")}
-                    disabled={day.locked}
-                    title={day.locked ? CHECKIN_LOCK_MESSAGE : day.date}
-                    onClick={() => toggle(habit.id, day.date)}
+                    className={`habit-cute-status ${habit.todayCompleted ? "done" : "pending"}`}
+                    aria-label={`Toggle today for ${habit.name}`}
+                    disabled={!today}
+                    onClick={() => {
+                      if (today) toggle(habit.id, today.date);
+                    }}
                   >
-                    <span className="sr-only">{day.date}</span>
+                    <span>{habit.todayCompleted ? "✓" : "♡"}</span>
                   </button>
-                ))}
+                </div>
+              </header>
+
+              <div className="habit-feed-grid-wrap">
+                <div className="habit-feed-grid" aria-label={`${habit.name} recent activity`}>
+                  {habit.days.map((day) => (
+                    <button
+                      key={day.date}
+                      type="button"
+                      className={[
+                        "grid-pixel",
+                        day.completed ? "done" : "",
+                        day.today ? "today" : "",
+                        day.future ? "future" : "",
+                        day.locked ? "locked" : ""
+                      ].join(" ")}
+                      disabled={day.locked}
+                      title={day.locked ? CHECKIN_LOCK_MESSAGE : day.date}
+                      onClick={() => toggle(habit.id, day.date)}
+                    >
+                      <span className="sr-only">{day.date}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="card-footer">
-                <span>🔥 {habit.currentStreak} streak</span>
-                <span>🏆 {habit.bestStreak} best</span>
-                <span>✅ {habit.totalCompletions} done</span>
-                <a href={`/habits/${habit.id}/edit`}>Edit</a>
-              </div>
+              <footer className="habit-feed-meta">
+                <span><strong>{habit.currentStreak}</strong> streak</span>
+                <span><strong>{habit.bestStreak}</strong> best</span>
+                <span><strong>{habit.weeklyDone}</strong>/{habit.targetPerWeek} week</span>
+                <span><strong>{habit.yearCompletions}</strong> year</span>
+                <span><strong>{habit.totalCompletions}</strong> total</span>
+                <span><strong>{habit.monthPercent}%</strong> month</span>
+                <a className="feed-edit-link" href={`/habits/${habit.id}/edit`}>Edit</a>
+              </footer>
             </article>
           );
         })}

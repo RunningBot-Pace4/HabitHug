@@ -41,28 +41,49 @@ export default async function BattleRoomPage({ params }: { params: Promise<{ id:
 
   return (
     <main className="app-shell">
-      <header className="app-header">
-        <div className="brand"><div className="brand-bubble">{room.emoji}</div><div><h1>{room.name}</h1><p>{room.description}</p></div></div>
-        <Link className="secondary-btn" href="/battle">Back</Link>
-      </header>
-
-      <section className="room-card">
-        <p>Share this join code with friends:</p>
-        <span className="join-code">{room.joinCode}</span>
+      <section className="battle-hero glass-card">
+        <div className="battle-hero-copy">
+          <p className="eyebrow">Private battle room</p>
+          <h1>{room.emoji} {room.name}</h1>
+          <p>{room.description}</p>
+        </div>
+        <div className="battle-total-pill" aria-label="Members">
+          <span>Players</span>
+          <strong>{room.members.length}</strong>
+        </div>
       </section>
 
-      <section className="leaderboard">
+      <section className="battle-room-toolbar glass-card">
+        <div>
+          <span>Invite code</span>
+          <strong>{room.joinCode}</strong>
+        </div>
+        <Link className="add-pill" href="/battle">← Back</Link>
+      </section>
+
+      <section className="battle-section-head">
+        <div>
+          <p className="eyebrow">Leaderboard</p>
+          <h2>Who is winning?</h2>
+          <p>Scores count completed check-ins during this battle window.</p>
+        </div>
+      </section>
+
+      <section className="leaderboard-list">
         {rows.map((row: any, index: number) => (
-          <div className="rank-row" key={row.user.id}>
-            <div className="rank-medal">{index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : index + 1}</div>
-            <div>
-              <strong>{row.user.name}</strong>
-              <p style={{ margin: "4px 0 0", color: "var(--muted)", fontWeight: 800 }}>{row.completions} habit check-ins</p>
+          <div className="leaderboard-card glass-card" key={row.user.id}>
+            <div className="leaderboard-person">
+              <span className="rank-medal">{index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : index + 1}</span>
+              <div>
+                <h2>{row.user.name}</h2>
+                <p>{row.completions} habit check-ins</p>
+              </div>
             </div>
             <strong>{row.points} pts</strong>
           </div>
         ))}
       </section>
+
       <BottomNav />
     </main>
   );

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body><GlobalLoadingProvider />{children}</body>
+      <body className="card-feed-theme"><GlobalLoadingProvider />{children}</body>
     </html>
   );
 }
