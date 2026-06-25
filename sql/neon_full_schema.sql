@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   "passwordHash" text NOT NULL,
   mascot text NOT NULL DEFAULT '🐰',
   "themeColor" text NOT NULL DEFAULT 'pink',
+  "isAdmin" boolean NOT NULL DEFAULT false,
   "createdAt" timestamptz NOT NULL DEFAULT now(),
   "updatedAt" timestamptz NOT NULL DEFAULT now()
 );
@@ -135,3 +136,7 @@ ON CONFLICT (code) DO UPDATE SET
   "ruleValue" = excluded."ruleValue",
   "sortOrder" = excluded."sortOrder",
   "isActive" = true;
+
+
+-- Promote an admin user after registration if needed:
+-- UPDATE users SET "isAdmin" = true WHERE email = 'your-email@example.com';

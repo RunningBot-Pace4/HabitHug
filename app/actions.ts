@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { clearSession, getCurrentUser, setSession } from "@/lib/session";
+import { clearSession, getCurrentUser, isConfiguredAdminEmail, setSession } from "@/lib/session";
 import { createMissingStarterHabits } from "@/lib/bootstrap";
 import { parseDateOnly, todayUtc, addDays, toDateOnlyString } from "@/lib/dates";
 
@@ -40,7 +40,8 @@ export async function registerAction(_: unknown, formData: FormData) {
       data: {
         name: parsed.data.name,
         email,
-        passwordHash: await bcrypt.hash(parsed.data.password, 12)
+        passwordHash: await bcrypt.hash(parsed.data.password, 12),
+        isAdmin: isConfiguredAdminEmail(email)
       }
     });
 
@@ -70,6 +71,10 @@ export async function loginAction(_: unknown, formData: FormData) {
       return { error: "Wrong password. Please try again." };
     }
 
+    if (!user.isAdmin && isConfiguredAdminEmail(user.email)) {
+      await prisma.user.update({ where: { id: user.id }, data: { isAdmin: true } });
+    }
+
     await createMissingStarterHabits(user.id);
     await setSession(user.id);
     redirect("/");
@@ -82,6 +87,34 @@ export async function loginAction(_: unknown, formData: FormData) {
 export async function logoutAction() {
   await clearSession();
   redirect("/login");
+}
+
+
+const ProfileSchema = z.object({
+  name: z.string().min(2).max(50),
+  mascot: z.string().min(1).max(8),
+  themeColor: z.enum(["pink", "purple", "blue", "green", "yellow", "orange"])
+});
+
+export async function updateProfileAction(_: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const parsed = ProfileSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: "Please choose a name, mascot, and dashboard color." };
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      name: parsed.data.name,
+      mascot: parsed.data.mascot,
+      themeColor: parsed.data.themeColor
+    }
+  });
+
+  revalidatePath("/");
+  revalidatePath("/settings");
+  return { success: "Profile updated — your dashboard feels more like you ✨" };
 }
 
 const HabitSchema = z.object({
@@ -150,6 +183,7 @@ const RewardSchema = z.object({
 export async function saveRewardAction(_: unknown, formData: FormData) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (!user.isAdmin) return { error: "Admin access is needed to edit rewards." };
 
   const parsed = RewardSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: "Please check reward details." };
@@ -168,6 +202,7 @@ export async function saveRewardAction(_: unknown, formData: FormData) {
 export async function saveRewardDirectAction(formData: FormData): Promise<void> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (!user.isAdmin) redirect("/rewards");
 
   const parsed = RewardSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -188,6 +223,7 @@ export async function saveRewardDirectAction(formData: FormData): Promise<void> 
 export async function deleteRewardAction(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (!user.isAdmin) redirect("/rewards");
   const id = String(formData.get("id") ?? "");
   await prisma.rewardBadgeDefinition.delete({ where: { id } });
   revalidatePath("/rewards/manage");

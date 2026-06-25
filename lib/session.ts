@@ -71,3 +71,12 @@ export async function getCurrentUser() {
   if (!payload) return null;
   return prisma.user.findUnique({ where: { id: payload.userId } });
 }
+
+
+export function isConfiguredAdminEmail(email: string) {
+  return (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean)
+    .includes(email.trim().toLowerCase());
+}

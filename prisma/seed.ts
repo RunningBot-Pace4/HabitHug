@@ -34,6 +34,18 @@ async function main() {
       create: { code, name, description, icon, points, ruleType, ruleValue, sortOrder, isActive: true }
     });
   }
+  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+  for (const email of adminEmails) {
+    await prisma.user.updateMany({
+      where: { email },
+      data: { isAdmin: true }
+    });
+  }
+
 }
 
 main()

@@ -36,8 +36,10 @@ export function endOfMonth(date: Date): Date {
 
 export function compactGridDates(days = 126): string[] {
   const today = todayUtc();
-  const start = addDays(today, -(days - 1));
-  return Array.from({ length: days }, (_, i) => toDateOnlyString(addDays(start, i)));
+  const weeks = Math.max(1, Math.ceil(days / 7));
+  const currentWeekStart = startOfWeekMonday(today);
+  const start = addDays(currentWeekStart, -((weeks - 1) * 7));
+  return Array.from({ length: weeks * 7 }, (_, i) => toDateOnlyString(addDays(start, i)));
 }
 
 export function monthCalendar(year: number, monthIndex: number) {

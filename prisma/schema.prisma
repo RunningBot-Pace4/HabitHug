@@ -15,6 +15,7 @@ model User {
   passwordHash String
   mascot       String   @default("🐰")
   themeColor   String   @default("pink")
+  isAdmin      Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

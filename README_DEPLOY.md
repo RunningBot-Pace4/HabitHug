@@ -121,3 +121,19 @@ yarn build
 ```
 
 Remove `ENABLE_EXPERIMENTAL_COREPACK` if you added it earlier.
+
+## Optional admin setup
+
+To let your account manage rewards, add this Vercel environment variable before login/register:
+
+```env
+ADMIN_EMAILS=your-email@example.com
+```
+
+For an existing account, run this in Neon SQL Editor:
+
+```sql
+UPDATE users SET "isAdmin" = true WHERE email = 'your-email@example.com';
+```
+
+Then redeploy or log out/login again.

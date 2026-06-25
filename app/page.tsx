@@ -16,7 +16,7 @@ export default async function HomePage() {
 
   await createMissingStarterHabits(user.id);
 
-  const gridDates = compactGridDates(156);
+  const gridDates = compactGridDates(126);
   const today = todayUtc();
   const todayText = toDateOnlyString(today);
   const yesterdayText = toDateOnlyString(addDays(today, -1));
@@ -102,7 +102,7 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <main className="app-shell">
+      <main className={`app-shell dashboard-color-${user.themeColor}`}>
         <section className="feed-hero cute-hero">
           <div className="cute-hero-copy">
             <p className="eyebrow">Tiny hugs, daily wins</p>
@@ -111,7 +111,7 @@ export default async function HomePage() {
           </div>
 
           <div className="hero-mascot-card" aria-label="HabitHug mascot message">
-            <span className="hero-mascot" aria-hidden="true">🐻‍❄️</span>
+            <span className="hero-mascot" aria-hidden="true">{user.mascot}</span>
             <div>
               <strong>Your buddy is cheering!</strong>
               <small>Tap a cute card, collect tiny wins, and keep your week glowing.</small>

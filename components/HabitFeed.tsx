@@ -39,6 +39,12 @@ type HabitFeedProps = {
   totalPoints: number;
 };
 
+type ToastMessage = {
+  id: number;
+  tone: "info" | "success" | "error";
+  message: string;
+};
+
 const CHECKIN_LOCK_MESSAGE =
   "Check-ins are only open for today and yesterday 🌱 Older days are locked to keep progress fair.";
 
@@ -147,6 +153,7 @@ function calculateDayStreakFromItems(items: HabitCardData[]) {
 
 export function HabitFeed({ habits, dayStreak, totalPoints }: HabitFeedProps) {
   const [items, setItems] = useState(habits);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
 
   // Check-ins are optimistic and client-owned until the next page load.
   // The API receives the final desired state (completed=true/false), not "toggle",
@@ -156,6 +163,16 @@ export function HabitFeed({ habits, dayStreak, totalPoints }: HabitFeedProps) {
   const desiredCompletedRef = useRef<Record<string, boolean>>({});
   const pendingTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const inFlightRef = useRef<Record<string, boolean>>({});
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function showToast(message: string, tone: ToastMessage["tone"] = "info") {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+
+    setToast({ id: Date.now(), message, tone });
+    toastTimerRef.current = setTimeout(() => setToast(null), 3600);
+  }
 
   function commitItems(nextItems: HabitCardData[]) {
     itemsRef.current = nextItems;
@@ -180,7 +197,7 @@ export function HabitFeed({ habits, dayStreak, totalPoints }: HabitFeedProps) {
 
       if (!res.ok) {
         if (requestVersionRef.current[key] === requestVersion) {
-          alert(CHECKIN_LOCK_MESSAGE);
+          showToast(CHECKIN_LOCK_MESSAGE, "info");
         }
         return;
       }
@@ -196,11 +213,11 @@ export function HabitFeed({ habits, dayStreak, totalPoints }: HabitFeedProps) {
       if (requestVersionRef.current[key] !== requestVersion) return;
 
       if (serverCompleted !== completed) {
-        alert("Oops, that check-in did not sync. Please tap once more 💛");
+        showToast("Oops, that check-in did not sync. Please tap once more 💛", "error");
       }
     } catch {
       if (requestVersionRef.current[key] === requestVersion) {
-        alert("Oops, I couldn’t save that check-in. Please try again in a moment 💛");
+        showToast("Oops, I couldn’t save that check-in. Please try again in a moment 💛", "error");
       }
     } finally {
       inFlightRef.current[key] = false;
@@ -248,6 +265,12 @@ export function HabitFeed({ habits, dayStreak, totalPoints }: HabitFeedProps) {
 
   return (
     <>
+      {toast ? (
+        <div className={`cute-toast ${toast.tone}`} role="status" aria-live="polite">
+          <span>{toast.tone === "error" ? "💛" : toast.tone === "success" ? "✨" : "🌱"}</span>
+          <p>{toast.message}</p>
+        </div>
+      ) : null}
       <section className="feed-summary" aria-label="Today summary">
         <div className="summary-bubble">
           <span>🔥</span>

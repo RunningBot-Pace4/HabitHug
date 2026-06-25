@@ -8,6 +8,7 @@ import { LoadingSubmitButton } from "@/components/LoadingSubmitButton";
 export default async function ManageRewardsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (!user.isAdmin) redirect("/rewards");
 
   const rewards = await prisma.rewardBadgeDefinition.findMany({ orderBy: { sortOrder: "asc" } });
 

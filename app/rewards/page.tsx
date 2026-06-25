@@ -29,6 +29,7 @@ export default async function RewardsPage() {
             <p className="eyebrow">Tiny prizes</p>
             <h1>Reward Garden</h1>
             <p>Collect cozy badges as your habits grow. Every tiny hug counts ✨</p>
+            {user.isAdmin ? <span className="reward-admin-pill">Admin badge tools enabled 🛠️</span> : null}
           </div>
         </div>
 
@@ -41,7 +42,7 @@ export default async function RewardsPage() {
             <strong>{totalPoints}</strong>
             <span>cozy points</span>
           </div>
-          <Link className="secondary-btn reward-manage-link" href="/rewards/manage">Edit rewards</Link>
+          {user.isAdmin ? <Link className="secondary-btn reward-manage-link" href="/rewards/manage">Edit rewards</Link> : null}
         </div>
       </section>
 
