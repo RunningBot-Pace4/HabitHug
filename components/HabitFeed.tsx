@@ -117,82 +117,119 @@ function applyServerStats(
 export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
   const [items, setItems] = useState(habits);
 
-  // Check-in should feel instant. We update the UI immediately and batch rapid taps.
-  // Example: tick → untick quickly sends either one server toggle or no request if the taps cancel out.
-  const pendingToggleCountsRef = useRef<Record<string, number>>({});
+  // Check-ins should feel instant and stable.
+  // We update the UI immediately, then save the desired final state in the background.
+  // Requests for the same day are sent in order so an older slow response cannot tick a box back on.
+  const itemsRef = useRef(habits);
+  const requestVersionRef = useRef<Record<string, number>>({});
+  const desiredCompletedRef = useRef<Record<string, boolean>>({});
   const pendingTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const inFlightRef = useRef<Record<string, boolean>>({});
 
-  function queueServerToggle(key: string, habitId: string, logDate: string) {
-    pendingToggleCountsRef.current[key] = (pendingToggleCountsRef.current[key] ?? 0) + 1;
+  function commitItems(nextItems: HabitCardData[]) {
+    itemsRef.current = nextItems;
+    setItems(nextItems);
+  }
+
+  async function flushServerSet(key: string, habitId: string, logDate: string) {
+    if (inFlightRef.current[key]) return;
+
+    const completed = desiredCompletedRef.current[key];
+    if (typeof completed !== "boolean") return;
+
+    const requestVersion = requestVersionRef.current[key] ?? 0;
+    inFlightRef.current[key] = true;
+
+    try {
+      const res = await fetch("/api/habits/toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ habitId, logDate, completed })
+      });
+
+      if (!res.ok) {
+        if (requestVersionRef.current[key] === requestVersion) {
+          alert(CHECKIN_LOCK_MESSAGE);
+        }
+        return;
+      }
+
+      const result = (await res.json()) as ToggleStatsResponse;
+
+      // If the user tapped again while this request was running, do not apply this old response.
+      // Send the newest desired state after this request finishes.
+      if (requestVersionRef.current[key] !== requestVersion) return;
+
+      const serverCompleted =
+        typeof result.isCompleted === "boolean"
+          ? result.isCompleted
+          : typeof result.completed === "boolean"
+            ? result.completed
+            : completed;
+
+      if (serverCompleted !== completed) return;
+
+      const nextItems = itemsRef.current.map((habit) =>
+        habit.id === habitId ? applyServerStats(habit, logDate, result) : habit
+      );
+      commitItems(nextItems);
+    } catch {
+      if (requestVersionRef.current[key] === requestVersion) {
+        alert("Oops, I couldn’t save that check-in. Please try again in a moment 💛");
+      }
+    } finally {
+      inFlightRef.current[key] = false;
+
+      // A newer tap happened while this request was in flight. Save the latest desired state now.
+      if ((requestVersionRef.current[key] ?? 0) !== requestVersion) {
+        void flushServerSet(key, habitId, logDate);
+      }
+    }
+  }
+
+  function queueServerSet(key: string, habitId: string, logDate: string, completed: boolean) {
+    requestVersionRef.current[key] = (requestVersionRef.current[key] ?? 0) + 1;
+    desiredCompletedRef.current[key] = completed;
 
     if (pendingTimersRef.current[key]) {
       clearTimeout(pendingTimersRef.current[key]);
     }
 
-    pendingTimersRef.current[key] = setTimeout(async () => {
-      const tapCount = pendingToggleCountsRef.current[key] ?? 0;
-      pendingToggleCountsRef.current[key] = 0;
+    pendingTimersRef.current[key] = setTimeout(() => {
       delete pendingTimersRef.current[key];
-
-      // Even number of quick taps returns to the original state, so no server change is needed.
-      if (tapCount % 2 === 0) return;
-
-      try {
-        const res = await fetch("/api/habits/toggle", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ habitId, logDate })
-        });
-
-        if (!res.ok) {
-          alert(CHECKIN_LOCK_MESSAGE);
-          window.location.reload();
-          return;
-        }
-
-        const result = (await res.json()) as ToggleStatsResponse;
-
-        // Reconcile quietly with server totals/streaks. The user already saw the instant update.
-        setItems((prev) =>
-          prev.map((habit) =>
-            habit.id === habitId ? applyServerStats(habit, logDate, result) : habit
-          )
-        );
-      } catch {
-        alert("Oops, I couldn’t save that check-in. Please try again in a moment 💛");
-        window.location.reload();
-      }
-    }, 220);
+      void flushServerSet(key, habitId, logDate);
+    }, 120);
   }
 
   function toggle(habitId: string, logDate: string) {
-    const target = items.find((h) => h.id === habitId);
-    const day = target?.days.find((d) => d.date === logDate);
     const key = `${habitId}:${logDate}`;
+    const target = itemsRef.current.find((h) => h.id === habitId);
+    const day = target?.days.find((d) => d.date === logDate);
 
     if (!target || !day || day.locked) return;
 
+    const nextCompleted = !day.completed;
+
     // Instant optimistic UI update. Stats update at the same time as the square.
-    setItems((prev) =>
-      prev.map((habit) => {
-        if (habit.id !== habitId) return habit;
+    const nextItems = itemsRef.current.map((habit) => {
+      if (habit.id !== habitId) return habit;
 
-        const wasCompleted = habit.days.find((day) => day.date === logDate)?.completed ?? false;
-        const nextDays = habit.days.map((d) =>
-          d.date === logDate ? { ...d, completed: !d.completed } : d
-        );
-        const stats = liveStats(nextDays, habit.bestStreak);
+      const nextDays = habit.days.map((d) =>
+        d.date === logDate ? { ...d, completed: nextCompleted } : d
+      );
+      const stats = liveStats(nextDays, habit.bestStreak);
+      const totalDelta = day.completed === nextCompleted ? 0 : nextCompleted ? 1 : -1;
 
-        return {
-          ...habit,
-          ...stats,
-          totalCompletions: Math.max(0, habit.totalCompletions + (wasCompleted ? -1 : 1)),
-          days: nextDays
-        };
-      })
-    );
+      return {
+        ...habit,
+        ...stats,
+        totalCompletions: Math.max(0, habit.totalCompletions + totalDelta),
+        days: nextDays
+      };
+    });
 
-    queueServerToggle(key, habitId, logDate);
+    commitItems(nextItems);
+    queueServerSet(key, habitId, logDate, nextCompleted);
   }
 
   const completedToday = useMemo(() => items.filter((h) => h.todayCompleted).length, [items]);

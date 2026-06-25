@@ -11,6 +11,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const habitId = String(body.habitId ?? "");
   const logDateText = String(body.logDate ?? "");
+  const requestedCompleted = typeof body.completed === "boolean" ? body.completed : undefined;
   const today = todayUtc();
   const todayText = toDateOnlyString(today);
   const yesterdayText = toDateOnlyString(addDays(today, -1));
@@ -36,18 +37,22 @@ export async function POST(req: NextRequest) {
     where: { habitId_logDate: { habitId, logDate } }
   });
 
-  let completed = true;
+  let completed = requestedCompleted ?? true;
 
   if (!existing) {
-    await prisma.habitLog.create({
-      data: { habitId, userId: user.id, logDate, isCompleted: true }
-    });
+    if (completed) {
+      await prisma.habitLog.create({
+        data: { habitId, userId: user.id, logDate, isCompleted: true }
+      });
+    }
   } else {
-    completed = !existing.isCompleted;
-    await prisma.habitLog.update({
-      where: { id: existing.id },
-      data: { isCompleted: completed }
-    });
+    completed = requestedCompleted ?? !existing.isCompleted;
+    if (existing.isCompleted !== completed) {
+      await prisma.habitLog.update({
+        where: { id: existing.id },
+        data: { isCompleted: completed }
+      });
+    }
   }
 
   const accountCompletionCount = await prisma.habitLog.count({ where: { userId: user.id, isCompleted: true } });
