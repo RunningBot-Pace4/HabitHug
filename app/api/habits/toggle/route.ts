@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
 import { addDays, parseDateOnly, todayUtc, toDateOnlyString } from "@/lib/dates";
+import { bestStreak, completedDateSet, currentStreak } from "@/lib/stats";
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
@@ -18,7 +19,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
   if (logDateText < yesterdayText || logDateText > todayText) {
-    return NextResponse.json({ error: "Check-ins are only open for today and yesterday 🌱 Older days are locked to keep progress fair." }, { status: 400 });
+    return NextResponse.json(
+      {
+        error:
+          "Check-ins are only open for today and yesterday 🌱 Older days are locked to keep progress fair."
+      },
+      { status: 400 }
+    );
   }
 
   const habit = await prisma.habit.findFirst({ where: { id: habitId, userId: user.id, archivedAt: null } });
@@ -43,9 +50,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const count = await prisma.habitLog.count({ where: { userId: user.id, isCompleted: true } });
+  const accountCompletionCount = await prisma.habitLog.count({ where: { userId: user.id, isCompleted: true } });
   const badge = await prisma.rewardBadgeDefinition.findFirst({
-    where: { ruleType: "TOTAL_COMPLETIONS", ruleValue: { lte: count }, isActive: true },
+    where: { ruleType: "TOTAL_COMPLETIONS", ruleValue: { lte: accountCompletionCount }, isActive: true },
     orderBy: { ruleValue: "desc" }
   });
 
@@ -57,5 +64,21 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ completed });
+  // Return fresh habit stats so the UI can stay live without a page refresh.
+  const habitLogs = await prisma.habitLog.findMany({
+    where: { habitId, userId: user.id },
+    select: { logDate: true, isCompleted: true }
+  });
+  const completedDates = completedDateSet(habitLogs);
+
+  return NextResponse.json({
+    habitId,
+    logDate: logDateText,
+    completed,
+    isCompleted: completed,
+    todayCompleted: completedDates.has(todayText),
+    currentStreak: currentStreak(completedDates),
+    bestStreak: bestStreak(completedDates),
+    totalCompletions: habitLogs.filter((log) => log.isCompleted).length
+  });
 }

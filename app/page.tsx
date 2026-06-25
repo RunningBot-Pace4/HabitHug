@@ -4,7 +4,7 @@ import { logoutAction } from "@/app/actions";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
 import { createMissingStarterHabits } from "@/lib/bootstrap";
-import { addDays, compactGridDates, parseDateOnly, todayUtc, toDateOnlyString } from "@/lib/dates";
+import { addDays, compactGridDates, todayUtc, toDateOnlyString } from "@/lib/dates";
 import { bestStreak, completedDateSet, currentStreak } from "@/lib/stats";
 import { HabitFeed } from "@/components/HabitFeed";
 import { BottomNav } from "@/components/BottomNav";
@@ -17,7 +17,6 @@ export default async function HomePage() {
   await createMissingStarterHabits(user.id);
 
   const gridDates = compactGridDates(126);
-  const startDate = parseDateOnly(gridDates[0]);
   const today = todayUtc();
   const todayText = toDateOnlyString(today);
   const yesterdayText = toDateOnlyString(addDays(today, -1));
@@ -26,9 +25,7 @@ export default async function HomePage() {
     where: { userId: user.id, archivedAt: null },
     orderBy: { createdAt: "asc" },
     include: {
-      logs: {
-        where: { logDate: { gte: startDate } }
-      }
+      logs: true
     }
   });
 
