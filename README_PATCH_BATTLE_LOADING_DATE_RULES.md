@@ -6,9 +6,9 @@
 - Added a route-level loading screen (`app/loading.tsx`).
 - Added button spinners/pending states for Battle create/join forms.
 - Added saving state for habit check buttons/grid cells.
-- Habit completions are now only allowed for yesterday and today.
+- Habit check-ins are now limited to today and yesterday only.
 - Older dates and future dates are disabled in the UI.
-- API also enforces the yesterday/today rule.
+- API also enforces the today/yesterday check-in window.
 
 ## Deploy
 

@@ -15,30 +15,47 @@ export function AuthForm({ mode, action }: Props) {
       ? String((state as { error?: string }).error ?? "")
       : "";
 
+  const loadingTitle = isRegister ? "Creating your cozy space..." : "Logging you in...";
+  const loadingText = isRegister ? "Preparing your starter habits." : "Checking your habits and rewards.";
+
   return (
-    <form action={formAction} className="auth-form">
-      {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
+    <>
+      {pending ? (
+        <div className="form-loading-overlay" role="status" aria-live="polite" aria-label={loadingTitle}>
+          <div className="form-loading-card">
+            <div className="loading-logo">🌸</div>
+            <div className="loading-spinner" aria-hidden="true" />
+            <h2>{loadingTitle}</h2>
+            <p>{loadingText}</p>
+          </div>
+        </div>
+      ) : null}
 
-      {isRegister && (
+      <form action={formAction} className="auth-form" aria-busy={pending}>
+        {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
+
+        {isRegister && (
+          <label>
+            <span>Name</span>
+            <input name="name" type="text" placeholder="Your cute name" required disabled={pending} />
+          </label>
+        )}
+
         <label>
-          <span>Name</span>
-          <input name="name" type="text" placeholder="Your cute name" required />
+          <span>Email</span>
+          <input name="email" type="email" placeholder="you@example.com" required disabled={pending} />
         </label>
-      )}
 
-      <label>
-        <span>Email</span>
-        <input name="email" type="email" placeholder="you@example.com" required />
-      </label>
+        <label>
+          <span>Password</span>
+          <input name="password" type="password" placeholder="••••••••" minLength={6} required disabled={pending} />
+        </label>
 
-      <label>
-        <span>Password</span>
-        <input name="password" type="password" placeholder="••••••••" minLength={6} required />
-      </label>
-
-      <button className="primary-btn" disabled={pending}>
-        {pending ? "Please wait..." : isRegister ? "Create account" : "Log in"}
-      </button>
-    </form>
+        <button className="primary-btn loading-btn" disabled={pending}>
+          {pending ? <span className="btn-spinner" aria-hidden="true" /> : null}
+          {pending ? (isRegister ? "Creating..." : "Logging in...") : isRegister ? "Create account" : "Log in"}
+        </button>
+      </form>
+    </>
   );
 }

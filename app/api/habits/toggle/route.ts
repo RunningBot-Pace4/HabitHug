@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
   if (logDateText < yesterdayText || logDateText > todayText) {
-    return NextResponse.json({ error: "Only yesterday and today can be updated" }, { status: 400 });
+    return NextResponse.json({ error: "Check-ins are only open for today and yesterday 🌱 Older days are locked to keep progress fair." }, { status: 400 });
   }
 
   const habit = await prisma.habit.findFirst({ where: { id: habitId, userId: user.id, archivedAt: null } });

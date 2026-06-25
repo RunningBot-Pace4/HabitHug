@@ -58,11 +58,11 @@ export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
 
       if (!res.ok) {
         setItems(habits);
-        alert("Only yesterday and today can be updated.");
+        alert("Check-ins are only open for today and yesterday 🌱 Older days are locked to keep progress fair.");
       }
     } catch {
       setItems(habits);
-      alert("Could not update this habit. Please try again.");
+      alert("Oops, I couldn’t save that check-in. Please try again in a moment 💛");
     } finally {
       setSavingKey(null);
     }
@@ -135,7 +135,7 @@ export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
                     savingKey === `${habit.id}:${day.date}` ? "saving" : ""
                   ].join(" ")}
                   disabled={day.locked || savingKey !== null}
-                  title={day.locked ? "Only yesterday and today can be updated" : day.date}
+                  title={day.locked ? "Check-ins are only open for today and yesterday 🌱 Older days are locked to keep progress fair." : day.date}
                   onClick={() => toggle(habit.id, day.date)}
                 >
                   <span className="sr-only">{day.date}</span>
