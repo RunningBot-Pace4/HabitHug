@@ -271,9 +271,15 @@ export function HabitFeed({ habits, dayStreak, totalPoints }: HabitFeedProps) {
         </div>
       </section>
 
-      <div className="feed-progress-track" aria-hidden="true">
-        <i style={{ width: `${progressPercent}%` }} />
-      </div>
+      <section className="cute-progress-panel" aria-label="Today progress">
+        <div className="cute-progress-copy">
+          <strong>Today’s tiny hugs</strong>
+          <span>{completedToday === items.length && items.length > 0 ? "All done — your habits feel loved ✨" : "Tap a chip when a tiny win is done 💛"}</span>
+        </div>
+        <div className="feed-progress-track" aria-hidden="true">
+          <i style={{ width: `${progressPercent}%` }} />
+        </div>
+      </section>
 
       <section className="quick-check-row" aria-label="Today quick check-in">
         {items.map((habit) => {
@@ -313,6 +319,7 @@ export function HabitFeed({ habits, dayStreak, totalPoints }: HabitFeedProps) {
               className={`habit-feed-card ${habit.color} ${habit.todayCompleted ? "completed" : ""}`}
               data-habit-card
             >
+              <span className="habit-sparkle" aria-hidden="true">{habit.todayCompleted ? "💖" : "✨"}</span>
               <header className="habit-feed-head">
                 <a className="habit-feed-title" href={`/habits/${habit.id}`}>
                   <span className="habit-feed-icon">{habit.icon}</span>
@@ -361,6 +368,7 @@ export function HabitFeed({ habits, dayStreak, totalPoints }: HabitFeedProps) {
               </div>
 
               <footer className="habit-feed-meta">
+                <span className="hug-pill"><strong>{habit.todayCompleted ? "Hugged" : "Open"}</strong> today</span>
                 <span><strong>{habit.currentStreak}</strong> streak</span>
                 <span><strong>{habit.bestStreak}</strong> best</span>
                 <span><strong>{habit.weeklyDone}</strong>/{habit.targetPerWeek} week</span>

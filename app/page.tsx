@@ -103,13 +103,21 @@ export default async function HomePage() {
       </header>
 
       <main className="app-shell">
-        <section className="feed-hero">
-          <div>
-            <p className="eyebrow">Habit cards</p>
+        <section className="feed-hero cute-hero">
+          <div className="cute-hero-copy">
+            <p className="eyebrow">Tiny hugs, daily wins</p>
             <h1>Hi {user.name}! {user.mascot}</h1>
-            <p>All your habits in one clean visual feed. Tap today or yesterday to keep progress fair and fresh.</p>
+            <p>Build your cozy streak one gentle check-in at a time. Today and yesterday are open so progress stays fair.</p>
           </div>
-          <Link className="add-pill" href="/habits/new">＋ Add habit</Link>
+
+          <div className="hero-mascot-card" aria-label="HabitHug mascot message">
+            <span className="hero-mascot" aria-hidden="true">🐻‍❄️</span>
+            <div>
+              <strong>Your buddy is cheering!</strong>
+              <small>Tap a cute card, collect tiny wins, and keep your week glowing.</small>
+            </div>
+            <Link className="add-pill hero-add-pill" href="/habits/new">＋ Add habit</Link>
+          </div>
         </section>
 
         <HabitFeed
