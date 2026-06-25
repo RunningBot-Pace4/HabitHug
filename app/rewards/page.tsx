@@ -15,22 +15,54 @@ export default async function RewardsPage() {
     }
   });
 
-  return (
-    <main className="app-shell">
-      <header className="app-header">
-        <div className="brand"><div className="brand-bubble">⭐</div><div><h1>Rewards</h1><p>Unlock cute badges as you progress.</p></div></div>
-        <Link className="secondary-btn" href="/rewards/manage">Edit rewards</Link>
-      </header>
+  const unlockedCount = rewards.filter((reward: any) => reward.users.length > 0).length;
+  const totalPoints = rewards
+    .filter((reward: any) => reward.users.length > 0)
+    .reduce((sum: number, reward: any) => sum + reward.points, 0);
 
-      <section className="grid-2">
-        {rewards.map((reward: any) => (
-          <article className="glass-card" style={{ padding: 22 }} key={reward.id}>
-            <div className="hero-icon">{reward.icon}</div>
-            <h2>{reward.name}</h2>
-            <p style={{ color: "var(--muted)", fontWeight: 800 }}>{reward.description}</p>
-            <span className="stat-pill">{reward.users.length ? "Unlocked ✨" : `${reward.points} points`}</span>
-          </article>
-        ))}
+  return (
+    <main className="app-shell rewards-page-shell">
+      <section className="rewards-hero glass-card">
+        <div className="rewards-hero-copy">
+          <div className="reward-mascot">🎁</div>
+          <div>
+            <p className="eyebrow">Tiny prizes</p>
+            <h1>Reward Garden</h1>
+            <p>Collect cozy badges as your habits grow. Every tiny hug counts ✨</p>
+          </div>
+        </div>
+
+        <div className="rewards-hero-side">
+          <div className="reward-score-card">
+            <strong>{unlockedCount}/{rewards.length}</strong>
+            <span>badges unlocked</span>
+          </div>
+          <div className="reward-score-card">
+            <strong>{totalPoints}</strong>
+            <span>cozy points</span>
+          </div>
+          <Link className="secondary-btn reward-manage-link" href="/rewards/manage">Edit rewards</Link>
+        </div>
+      </section>
+
+      <section className="reward-grid-deluxe" aria-label="Reward badges">
+        {rewards.map((reward: any) => {
+          const unlocked = reward.users.length > 0;
+          return (
+            <article className={`reward-card-deluxe glass-card ${unlocked ? "is-unlocked" : "is-locked"}`} key={reward.id}>
+              <div className="reward-card-top">
+                <div className="reward-card-icon">{reward.icon}</div>
+                <span className="reward-status-pill">{unlocked ? "Unlocked ✨" : "Locked"}</span>
+              </div>
+              <h2>{reward.name}</h2>
+              <p>{reward.description || "Keep going and this badge will bloom soon."}</p>
+              <div className="reward-card-foot">
+                <span>{reward.points} pts</span>
+                <small>{unlocked ? "Your mascot is proud 💛" : "Keep growing 🌱"}</small>
+              </div>
+            </article>
+          );
+        })}
       </section>
       <BottomNav />
     </main>
