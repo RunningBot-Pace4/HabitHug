@@ -30,7 +30,6 @@ const CHECKIN_LOCK_MESSAGE =
 export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
   const [items, setItems] = useState(habits);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
-  const [slowSyncKey, setSlowSyncKey] = useState<string | null>(null);
 
   async function toggle(habitId: string, logDate: string) {
     const target = items.find((h) => h.id === habitId);
@@ -41,11 +40,8 @@ export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
 
     setPendingKey(key);
 
-    // Check-ins are optimistic: update the UI immediately and only show
-    // a tiny background-sync note if Neon is slow. No full-page loader.
-    const slowTimer = window.setTimeout(() => {
-      setSlowSyncKey(key);
-    }, 1200);
+    // Check-ins are optimistic: update the UI immediately.
+    // No full-page loader and no visible "saving" pill for quick taps.
 
     setItems((prev) =>
       prev.map((h) =>
@@ -75,9 +71,7 @@ export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
       setItems(habits);
       alert("Oops, I couldn’t save that check-in. Please try again in a moment 💛");
     } finally {
-      window.clearTimeout(slowTimer);
       setPendingKey((current) => (current === key ? null : current));
-      setSlowSyncKey((current) => (current === key ? null : current));
     }
   }
 
@@ -115,8 +109,6 @@ export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
         {items.map((habit) => {
           const today = habit.days.find((d) => d.today);
           const todayKey = today ? `${habit.id}:${today.date}` : "";
-          const habitIsSyncing = slowSyncKey?.startsWith(`${habit.id}:`);
-
           return (
             <article key={habit.id} className={`habit-card color-${habit.color}`}>
               <div className="habit-card-head">
@@ -165,7 +157,6 @@ export function HabitFeed({ habits }: { habits: HabitCardData[] }) {
                 <span>🔥 {habit.currentStreak} streak</span>
                 <span>🏆 {habit.bestStreak} best</span>
                 <span>✅ {habit.totalCompletions} done</span>
-                {habitIsSyncing ? <span className="sync-pill">Saving quietly…</span> : null}
                 <a href={`/habits/${habit.id}/edit`}>Edit</a>
               </div>
             </article>
