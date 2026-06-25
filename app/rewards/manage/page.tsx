@@ -4,6 +4,7 @@ import { saveRewardDirectAction, deleteRewardAction } from "@/app/actions";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
 import { LoadingSubmitButton } from "@/components/LoadingSubmitButton";
+import { BottomNav } from "@/components/BottomNav";
 
 export default async function ManageRewardsPage() {
   const user = await getCurrentUser();
