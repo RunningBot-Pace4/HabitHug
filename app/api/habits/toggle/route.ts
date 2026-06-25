@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
-import { parseDateOnly, todayUtc, toDateOnlyString } from "@/lib/dates";
+import { addDays, parseDateOnly, todayUtc, toDateOnlyString } from "@/lib/dates";
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
@@ -10,13 +10,15 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const habitId = String(body.habitId ?? "");
   const logDateText = String(body.logDate ?? "");
-  const todayText = toDateOnlyString(todayUtc());
+  const today = todayUtc();
+  const todayText = toDateOnlyString(today);
+  const yesterdayText = toDateOnlyString(addDays(today, -1));
 
   if (!habitId || !/^\d{4}-\d{2}-\d{2}$/.test(logDateText)) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
-  if (logDateText > todayText) {
-    return NextResponse.json({ error: "Cannot complete future dates" }, { status: 400 });
+  if (logDateText < yesterdayText || logDateText > todayText) {
+    return NextResponse.json({ error: "Only yesterday and today can be updated" }, { status: 400 });
   }
 
   const habit = await prisma.habit.findFirst({ where: { id: habitId, userId: user.id, archivedAt: null } });

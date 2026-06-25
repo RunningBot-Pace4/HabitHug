@@ -210,6 +210,25 @@ button, input, select {
 .mini-cell.completed { background: var(--blue); }
 .mini-cell.today { outline: 3px solid rgba(109, 189, 255, .46); outline-offset: 2px; }
 .mini-cell.future { opacity: .35; cursor: not-allowed; }
+.mini-cell.locked {
+  opacity: .42;
+  cursor: not-allowed;
+}
+.mini-cell.saving,
+.check-btn.saving {
+  position: relative;
+  overflow: hidden;
+}
+.mini-cell.saving::after,
+.check-btn.saving::after {
+  content: "";
+  position: absolute;
+  inset: 25%;
+  border: 3px solid rgba(255,255,255,.55);
+  border-top-color: rgba(33,27,50,.55);
+  border-radius: 999px;
+  animation: spin .75s linear infinite;
+}
 
 .color-pink .mini-cell.completed, .color-pink .check-btn.done { background: var(--pink); }
 .color-purple .mini-cell.completed, .color-purple .check-btn.done { background: var(--purple); }
@@ -361,18 +380,76 @@ input:focus, select:focus {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
+  align-items: start;
 }
+
 .battle-create-card {
-  padding: 28px;
+  padding: clamp(18px, 3vw, 28px);
+  min-width: 0;
+  overflow: hidden;
 }
+
+.battle-create-card .hero {
+  margin: 0 0 18px;
+  padding: clamp(18px, 3vw, 28px);
+}
+
 .battle-form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 180px;
+  grid-template-columns: minmax(0, 1fr) minmax(86px, 148px);
   gap: 16px;
   align-items: end;
 }
-.span-2 { grid-column: span 2; }
-.span-3 { grid-column: span 3; }
+
+.battle-form-grid > label {
+  min-width: 0;
+}
+
+.full-field {
+  grid-column: 1 / -1;
+}
+
+.name-field {
+  min-width: 0;
+}
+
+.emoji-field input {
+  text-align: center;
+  font-size: 1.15rem;
+}
+
+.battle-form input,
+.join-form input {
+  min-width: 0;
+}
+
+.loading-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.loading-btn:disabled,
+.quick-chip:disabled,
+.check-btn:disabled,
+.mini-cell:disabled {
+  cursor: wait;
+}
+
+.btn-spinner {
+  width: 18px;
+  height: 18px;
+  border: 3px solid rgba(255,255,255,.45);
+  border-top-color: #fff;
+  border-radius: 999px;
+  animation: spin .75s linear infinite;
+}
+
+.secondary-btn .btn-spinner {
+  border-color: rgba(33,27,50,.22);
+  border-top-color: var(--ink);
+}
 
 .room-list {
   display: grid;
@@ -424,11 +501,72 @@ input:focus, select:focus {
 }
 .hero h2 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.5rem); }
 
+.loading-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.loading-card {
+  width: min(420px, 100%);
+  padding: 34px;
+  text-align: center;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 34px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.loading-logo {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 26px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  font-size: 2rem;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  border: 5px solid rgba(169,119,255,.22);
+  border-top-color: var(--purple);
+  border-radius: 999px;
+  animation: spin .75s linear infinite;
+}
+
+.loading-card h1 {
+  margin: 0 0 6px;
+  font-size: 1.7rem;
+}
+
+.loading-card p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 900;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .sr-only {
   position: absolute;
   width: 1px; height: 1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
+}
+
+@media (max-width: 980px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 760px) {
@@ -439,7 +577,8 @@ input:focus, select:focus {
     gap: 5px;
   }
   .grid-2, .battle-form-grid { grid-template-columns: 1fr; }
-  .span-2, .span-3 { grid-column: auto; }
+  .full-field { grid-column: auto; }
+  .battle-create-card .hero { align-items: flex-start; }
   .habit-card-head { grid-template-columns: auto 1fr auto; gap: 10px; }
   .habit-icon, .brand-bubble { width: 52px; height: 52px; border-radius: 20px; }
   .check-btn { width: 52px; height: 52px; border-radius: 20px; }
